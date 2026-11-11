@@ -1,0 +1,75 @@
+name: Security Platform PR Pipeline
+
+on:
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Platform Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+
+      - name: Run Security Scan Engine
+        run: |
+          python -m security_platform.cli scan . --format sarif > results.sarif
+          python -m security_platform.cli scan . --format json > report.json
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results.sarif
+
+      - name: Evaluate Security Gate & Post PR Comment
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          python -c "
+          import os, json
+          from security_platform.risk.models import RiskAssessment
+          from security_platform.models.finding import Finding
+          from security_platform.cicd.gate import SecurityGateEvaluator
+          from security_platform.cicd.pr_commenter import PRCommenter
+
+          with open('report.json') as f:
+              data = json.load(f)
+
+          risk = RiskAssessment(**data['risk_assessment'])
+          findings = [Finding(**item) for item in data['findings']]
+
+          evaluator = SecurityGateEvaluator()
+          gate_result = evaluator.evaluate(risk)
+
+          commenter = PRCommenter()
+          md_body = commenter.format_markdown_comment(risk, findings, gate_result)
+          commenter.post_comment(
+              os.environ['REPO_NAME'], 
+              int(os.environ['PR_NUMBER']), 
+              os.environ['GITHUB_TOKEN'], 
+              md_body
+          )
+
+          if not gate_result.passed:
+              print('Security Gate Failed!')
+              exit(1)
+          "

@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security-platform-api
+  namespace: security-tools
+  labels:
+    app: security-platform-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: security-platform-api
+  template:
+    metadata:
+      labels:
+        app: security-platform-api
+    spec:
+      containers:
+        - name: api-engine
+          image: security-platform-api:v1.0.0
+          imagePullPolicy: IFNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: LOG_LEVEL
+              value: "INFO"
+          livenessProbe:
+            httpGet:
+              path: /dashboard
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /dashboard
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-platform-service
+  namespace: security-tools
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8000
+      name: http
+  selector:
+    app: security-platform-api
+    

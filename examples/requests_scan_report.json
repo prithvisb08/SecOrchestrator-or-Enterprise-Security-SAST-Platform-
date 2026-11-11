@@ -1,0 +1,15 @@
+Starting security scan on target: requests
+{
+  "repository_id": "requests",
+  "risk_assessment": {
+    "repository_id": "requests",
+    "overall_risk_score": 0.0,
+    "risk_level": "INFO",
+    "risk_factors": {},
+    "explanations": [
+      "No security findings detected."
+    ]
+  },
+  "findings_count": 0,
+  "findings": []
+}

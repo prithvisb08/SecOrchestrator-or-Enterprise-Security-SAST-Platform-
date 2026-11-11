@@ -1,0 +1,161 @@
+Starting security scan on target: .
+{
+  "repository_id": "",
+  "risk_assessment": {
+    "repository_id": "",
+    "overall_risk_score": 7.7,
+    "risk_level": "HIGH",
+    "risk_factors": {
+      "CRITICAL": 2.0,
+      "HIGH": 3.0
+    },
+    "explanations": [
+      "Evaluated 5 findings across code inventory.",
+      "Critical/High finding counts factored into weighting.",
+      "Asset criticality multiplier applied: 1.0"
+    ]
+  },
+  "findings_count": 5,
+  "findings": [
+    {
+      "finding_id": "803437ef-2589-4d3d-b5a5-d409b62f0ccc",
+      "rule_id": "SEC-CFG-ROOT-001",
+      "category": "CONFIGURATION",
+      "vulnerability_type": "INSECURE_DOCKER",
+      "title": "Container Runs as Root User",
+      "description": "The Dockerfile does not switch to a non-privileged user, running processes as root by default.",
+      "severity": "HIGH",
+      "confidence": 0.9,
+      "location": {
+        "file_path": "Dockerfile",
+        "start_line": 1,
+        "end_line": 1,
+        "start_column": null,
+        "end_column": null
+      },
+      "code_snippet": "[File-level check]",
+      "evidence": "No non-root USER instruction found in Dockerfile.",
+      "root_cause": "Running containers as root grants unnecessary host system privileges if container isolation is breached.",
+      "attack_surface": null,
+      "affected_component": null,
+      "recommendation": "Add a dedicated non-root user via 'USER' instruction in the Dockerfile.",
+      "remediation_available": false,
+      "status": "OPEN",
+      "discovered_at": "2026-08-22T21:06:53.722180Z",
+      "scanner_version": "1.0.0",
+      "metadata": {}
+    },
+    {
+      "finding_id": "a6ade8e8-a1f1-4838-ab28-6a3c59fbac01",
+      "rule_id": "SEC-SECRET-CLOUD_CREDENTIALS-001",
+      "category": "SECRETS",
+      "vulnerability_type": "CLOUD_CREDENTIALS",
+      "title": "Hardcoded AWS Access Key Detected",
+      "description": "A potential AWS Access Key was found hardcoded in source code.",
+      "severity": "CRITICAL",
+      "confidence": 0.92,
+      "location": {
+        "file_path": "vulnerable.py",
+        "start_line": 14,
+        "end_line": 14,
+        "start_column": null,
+        "end_column": null
+      },
+      "code_snippet": "AWS_API_KEY = \"[REDACTED_SECRET]\"",
+      "evidence": "Matched pattern for AWS Access Key on line 14.",
+      "root_cause": "Storing credentials directly in source code exposes them to anyone with repository access.",
+      "attack_surface": null,
+      "affected_component": null,
+      "recommendation": "Remove the secret immediately, revoke it, and use environment variables or a secure vault.",
+      "remediation_available": false,
+      "status": "OPEN",
+      "discovered_at": "2026-08-22T21:06:53.722995Z",
+      "scanner_version": "1.0.0",
+      "metadata": {}
+    },
+    {
+      "finding_id": "a2ba72b4-fa98-4a33-8c85-cf4ba0bf6af2",
+      "rule_id": "SEC-SECRET-API_KEY-001",
+      "category": "SECRETS",
+      "vulnerability_type": "API_KEY",
+      "title": "Hardcoded Generic API Key Detected",
+      "description": "A potential Generic API Key was found hardcoded in source code.",
+      "severity": "HIGH",
+      "confidence": 0.92,
+      "location": {
+        "file_path": "vulnerable.py",
+        "start_line": 14,
+        "end_line": 14,
+        "start_column": null,
+        "end_column": null
+      },
+      "code_snippet": "AWS_[REDACTED_SECRET]",
+      "evidence": "Matched pattern for Generic API Key on line 14.",
+      "root_cause": "Storing credentials directly in source code exposes them to anyone with repository access.",
+      "attack_surface": null,
+      "affected_component": null,
+      "recommendation": "Remove the secret immediately, revoke it, and use environment variables or a secure vault.",
+      "remediation_available": false,
+      "status": "OPEN",
+      "discovered_at": "2026-08-22T21:06:53.723020Z",
+      "scanner_version": "1.0.0",
+      "metadata": {}
+    },
+    {
+      "finding_id": "9534863a-e5ba-4ff6-a34f-5355d57f305e",
+      "rule_id": "SEC-CODE-001",
+      "category": "SECURITY",
+      "vulnerability_type": "CODE_INJECTION",
+      "title": "Unsafe Dynamic Code Execution",
+      "description": "The use of eval() or exec() can allow attackers to execute arbitrary code if user input is passed to it.",
+      "severity": "CRITICAL",
+      "confidence": 0.85,
+      "location": {
+        "file_path": "vulnerable.py",
+        "start_line": 11,
+        "end_line": 11,
+        "start_column": 5,
+        "end_column": 21
+      },
+      "code_snippet": null,
+      "evidence": "Direct call to dangerous built-in 'exec' detected.",
+      "root_cause": "Application dynamically evaluates code using exec().",
+      "attack_surface": null,
+      "affected_component": null,
+      "recommendation": "Avoid dynamic code execution. Use safer alternatives like ast.literal_eval() or structured configuration.",
+      "remediation_available": false,
+      "status": "OPEN",
+      "discovered_at": "2026-08-22T21:06:53.723212Z",
+      "scanner_version": "1.0.0",
+      "metadata": {}
+    },
+    {
+      "finding_id": "0a98dbcc-b4e0-4ff7-a786-60589f955f43",
+      "rule_id": "SEC-CRYPTO-001",
+      "category": "SECURITY",
+      "vulnerability_type": "INSECURE_CRYPTOGRAPHY",
+      "title": "Weak Cryptographic Hash Function",
+      "description": "MD5 and SHA-1 are cryptographically broken and vulnerable to collision attacks.",
+      "severity": "HIGH",
+      "confidence": 0.95,
+      "location": {
+        "file_path": "vulnerable.py",
+        "start_line": 6,
+        "end_line": 6,
+        "start_column": 9,
+        "end_column": 39
+      },
+      "code_snippet": null,
+      "evidence": "Instantiation of weak hash algorithm 'hashlib.md5'.",
+      "root_cause": "The application uses hashlib.md5 which is susceptible to collision attacks.",
+      "attack_surface": null,
+      "affected_component": null,
+      "recommendation": "Upgrade to a strong hashing algorithm such as SHA-256 or SHA-3.",
+      "remediation_available": false,
+      "status": "OPEN",
+      "discovered_at": "2026-08-22T21:06:53.723253Z",
+      "scanner_version": "1.0.0",
+      "metadata": {}
+    }
+  ]
+}

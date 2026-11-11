@@ -1,0 +1,154 @@
+Starting security scan on target: .
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Enterprise Security Platform",
+          "version": "1.0.0",
+          "rules": [
+            {
+              "id": "SEC-CFG-ROOT-001",
+              "name": "Container Runs as Root User",
+              "shortDescription": {
+                "text": "The Dockerfile does not switch to a non-privileged user, running processes as root by default."
+              }
+            },
+            {
+              "id": "SEC-SECRET-CLOUD_CREDENTIALS-001",
+              "name": "Hardcoded AWS Access Key Detected",
+              "shortDescription": {
+                "text": "A potential AWS Access Key was found hardcoded in source code."
+              }
+            },
+            {
+              "id": "SEC-SECRET-API_KEY-001",
+              "name": "Hardcoded Generic API Key Detected",
+              "shortDescription": {
+                "text": "A potential Generic API Key was found hardcoded in source code."
+              }
+            },
+            {
+              "id": "SEC-CODE-001",
+              "name": "Unsafe Dynamic Code Execution",
+              "shortDescription": {
+                "text": "The use of eval() or exec() can allow attackers to execute arbitrary code if user input is passed to it."
+              }
+            },
+            {
+              "id": "SEC-CRYPTO-001",
+              "name": "Weak Cryptographic Hash Function",
+              "shortDescription": {
+                "text": "MD5 and SHA-1 are cryptographically broken and vulnerable to collision attacks."
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "SEC-CFG-ROOT-001",
+          "level": "error",
+          "message": {
+            "text": "The Dockerfile does not switch to a non-privileged user, running processes as root by default."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "Dockerfile"
+                },
+                "region": {
+                  "startLine": 1,
+                  "endLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SEC-SECRET-CLOUD_CREDENTIALS-001",
+          "level": "error",
+          "message": {
+            "text": "A potential AWS Access Key was found hardcoded in source code."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "vulnerable.py"
+                },
+                "region": {
+                  "startLine": 14,
+                  "endLine": 14
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SEC-SECRET-API_KEY-001",
+          "level": "error",
+          "message": {
+            "text": "A potential Generic API Key was found hardcoded in source code."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "vulnerable.py"
+                },
+                "region": {
+                  "startLine": 14,
+                  "endLine": 14
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SEC-CODE-001",
+          "level": "error",
+          "message": {
+            "text": "The use of eval() or exec() can allow attackers to execute arbitrary code if user input is passed to it."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "vulnerable.py"
+                },
+                "region": {
+                  "startLine": 11,
+                  "endLine": 11
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SEC-CRYPTO-001",
+          "level": "error",
+          "message": {
+            "text": "MD5 and SHA-1 are cryptographically broken and vulnerable to collision attacks."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "vulnerable.py"
+                },
+                "region": {
+                  "startLine": 6,
+                  "endLine": 6
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

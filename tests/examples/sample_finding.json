@@ -1,0 +1,28 @@
+{
+  "finding_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "rule_id": "SEC-SQL-001",
+  "category": "SECURITY",
+  "vulnerability_type": "SQL_INJECTION",
+  "title": "SQL Injection in Login",
+  "description": "User input passed directly to database driver.",
+  "severity": "CRITICAL",
+  "confidence": 0.96,
+  "location": {
+    "file_path": "src/auth/login.py",
+    "start_line": 84,
+    "end_line": 84,
+    "start_column": null,
+    "end_column": null
+  },
+  "code_snippet": null,
+  "evidence": null,
+  "root_cause": "User-controlled input reaches a SQL execution sink without parameterization.",
+  "attack_surface": null,
+  "affected_component": null,
+  "recommendation": "Use parameterized queries.",
+  "remediation_available": false,
+  "status": "OPEN",
+  "discovered_at": "2026-08-22T17:39:09Z",
+  "scanner_version": "1.0.0",
+  "metadata": {}
+}
