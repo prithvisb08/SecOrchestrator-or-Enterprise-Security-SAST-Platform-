@@ -12,6 +12,8 @@ This document tracks all external tools and libraries utilized or integrated int
 | Typer | MIT | [tiangolo/typer](https://github.com/tiangolo/typer) | Permissive |
 | Rich | MIT | [Textualize/rich](https://github.com/Textualize/rich) | Permissive |
 | Prometheus Client | Apache-2.0 | [prometheus/client_python](https://github.com/prometheus/client_python) | Permissive |
+| PyJWT | Apache-2.0 | [jpadilla/pyjwt](https://github.com/jpadilla/pyjwt) | Permissive |
+| python-multipart | Apache-2.0 | [Kludex/python-multipart](https://github.com/Kludex/python-multipart) | Permissive |
 
 ## Development & Testing Dependencies
 

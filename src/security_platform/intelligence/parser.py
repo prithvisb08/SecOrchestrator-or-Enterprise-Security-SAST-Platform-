@@ -118,6 +118,7 @@ class CodeParser:
         try:
             tree = ast.parse(source_code)
             visitor.visit(tree)
-        except SyntaxError:
+        except (SyntaxError, RecursionError, MemoryError, ValueError):
+            # Gracefully handle parser crashes and resource exhaustion on untrusted code
             pass
         return visitor

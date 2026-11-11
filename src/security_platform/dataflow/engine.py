@@ -45,6 +45,6 @@ class DataFlowEngine:
                     scanner_version=self.scanner_version
                 )
                 findings.append(finding)
-        except SyntaxError:
+        except (SyntaxError, RecursionError, MemoryError, ValueError):
             pass
         return findings

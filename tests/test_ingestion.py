@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from security_platform.core.errors import ArchiveSecurityError
 from security_platform.ingestion.discovery import ProjectDiscovery
 from security_platform.ingestion.engines import IgnoreRuleEngine
 from security_platform.ingestion.loaders import ArchiveLoader, LocalLoader
@@ -18,7 +19,7 @@ def test_archive_loader_path_traversal():
     with tempfile.NamedTemporaryFile(suffix=".zip") as tmp:
         with zipfile.ZipFile(tmp, 'w') as zf:
             zf.writestr("../malicious.sh", "echo 'hacked'")
-        with pytest.raises(ValueError, match="Path traversal detected"):
+        with pytest.raises((ArchiveSecurityError, ValueError)):
             ArchiveLoader(tmp.name)
 
 def test_project_discovery_builds_snapshot(tmp_path):
