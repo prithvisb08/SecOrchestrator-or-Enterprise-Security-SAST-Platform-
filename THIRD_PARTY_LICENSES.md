@@ -15,6 +15,7 @@ This document tracks all external tools and libraries utilized or integrated int
 | PyJWT | Apache-2.0 | [jpadilla/pyjwt](https://github.com/jpadilla/pyjwt) | Permissive |
 | python-multipart | Apache-2.0 | [Kludex/python-multipart](https://github.com/Kludex/python-multipart) | Permissive |
 | PyYAML | MIT | [yaml/pyyaml](https://github.com/yaml/pyyaml) | Permissive |
+| SQLAlchemy | MIT | [sqlalchemy/sqlalchemy](https://github.com/sqlalchemy/sqlalchemy) | Permissive |
 
 ## Development & Testing Dependencies
 

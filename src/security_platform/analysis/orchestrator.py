@@ -64,6 +64,7 @@ class ScanOrchestrator:
         self.engine_registry = engine_registry or create_default_registry()
         self.correlator = FindingCorrelator()
         self.risk_engine = RiskEngine()
+        self._file_cache: dict[str, tuple[str, list[Finding]]] = {}
 
     def _filter_suppressions(self, workspace_path: Path, findings: list[Finding]) -> list[Finding]:
         """Filters out findings suppressed via inline comments or .secorch-baseline.json."""
@@ -138,7 +139,8 @@ class ScanOrchestrator:
         asset_criticality: float = 1.0,
         scan_id: str | None = None,
         repository_id: str | None = None,
-        previous_findings: list[Finding] | None = None
+        previous_findings: list[Finding] | None = None,
+        changed_files: list[str] | set[str] | None = None,
     ) -> ScanResult:
         start_time = time.monotonic()
         path = Path(target_path).resolve()
@@ -175,8 +177,24 @@ class ScanOrchestrator:
         all_dependencies: list[Dependency] = []
         scan_errors: list[ScanErrorEntry] = []
 
-        # 2. Iterate and scan files
-        for file_inv in snapshot.files:
+        # 2. Iterate and scan files (with diff-only filtering and SHA256 caching)
+        files_to_scan = snapshot.files
+        if changed_files is not None:
+            changed_set = set(changed_files)
+            files_to_scan = [
+                f for f in snapshot.files
+                if f.file_path in changed_set or Path(f.file_path).name in changed_set
+            ]
+
+        for file_inv in files_to_scan:
+            # Check SHA-256 cache
+            if file_inv.file_path in self._file_cache:
+                cached_hash, cached_findings = self._file_cache[file_inv.file_path]
+                if cached_hash == file_inv.sha256_hash:
+                    all_findings.extend(cached_findings)
+                    continue
+
+            file_findings: list[Finding] = []
             full_path = path if path.is_file() else (path / file_inv.file_path)
             try:
                 content = full_path.read_text(encoding="utf-8", errors="ignore")
@@ -196,7 +214,7 @@ class ScanOrchestrator:
 
             # Secret scanner
             try:
-                all_findings.extend(
+                file_findings.extend(
                     self.secret_scanner.scan_content(file_inv.file_path, content)
                 )
             except Exception as exc:
@@ -212,7 +230,7 @@ class ScanOrchestrator:
             # Dockerfile analysis
             if "Dockerfile" in file_inv.file_path:
                 try:
-                    all_findings.extend(
+                    file_findings.extend(
                         self.config_analyzer.analyze_dockerfile(file_inv.file_path, content)
                     )
                 except Exception as exc:
@@ -230,7 +248,7 @@ class ScanOrchestrator:
                 try:
                     deps, sca_findings = self.dependency_analyzer.scan_manifest(file_inv.file_path, content)
                     all_dependencies.extend(deps)
-                    all_findings.extend(sca_findings)
+                    file_findings.extend(sca_findings)
                 except Exception as exc:
                     logger.error("Dependency analyzer failed on file", extra={"file": file_inv.file_path, "error": str(exc)})
                     scan_errors.append(
@@ -244,7 +262,7 @@ class ScanOrchestrator:
             # Dataflow taint analysis
             if file_inv.language == "python":
                 try:
-                    all_findings.extend(
+                    file_findings.extend(
                         self.dataflow_engine.analyze_file(file_inv.file_path, content)
                     )
                 except Exception as exc:
@@ -256,6 +274,10 @@ class ScanOrchestrator:
                             message=str(exc)
                         )
                     )
+
+            # Save in AST / content SHA-256 cache
+            self._file_cache[file_inv.file_path] = (file_inv.sha256_hash, file_findings)
+            all_findings.extend(file_findings)
 
         # 3. Context-wide SAST analysis
         try:
@@ -321,6 +343,6 @@ class ScanOrchestrator:
             correlated_findings=correlated,
             risk_assessment=risk,
             scan_errors=scan_errors,
-            scanned_files_count=len(snapshot.files),
+            scanned_files_count=len(files_to_scan),
             duration_seconds=duration
         )
