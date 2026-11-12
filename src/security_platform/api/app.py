@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 from security_platform.analysis.orchestrator import ScanOrchestrator
 from security_platform.api.auth import Role, UserContext, require_role
 from security_platform.api.middleware import SecurityHeadersMiddleware
+from security_platform.api.routers.ui import router as ui_router
+from security_platform.api.routers.webhooks import router as webhooks_router
 from security_platform.core.errors import ArchiveSecurityError
 from security_platform.core.logging import logger
 from security_platform.core.version import get_version
@@ -21,6 +23,8 @@ from security_platform.reporting.exporter import ReportExporter
 
 app = FastAPI(title="Enterprise Security Platform API", version=get_version())
 app.add_middleware(SecurityHeadersMiddleware)
+app.include_router(ui_router)
+app.include_router(webhooks_router)
 
 # Configured allow-listed roots for local scanning (preventing server filesystem traversal)
 _DEFAULT_SCAN_ROOTS = [

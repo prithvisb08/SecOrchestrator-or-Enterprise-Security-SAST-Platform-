@@ -16,6 +16,7 @@ This document tracks all external tools and libraries utilized or integrated int
 | python-multipart | Apache-2.0 | [Kludex/python-multipart](https://github.com/Kludex/python-multipart) | Permissive |
 | PyYAML | MIT | [yaml/pyyaml](https://github.com/yaml/pyyaml) | Permissive |
 | SQLAlchemy | MIT | [sqlalchemy/sqlalchemy](https://github.com/sqlalchemy/sqlalchemy) | Permissive |
+| LibCST | MIT | [Instagram/LibCST](https://github.com/Instagram/LibCST) | Permissive |
 
 ## Development & Testing Dependencies
 
