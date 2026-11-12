@@ -1,5 +1,4 @@
 import hashlib
-import os
 
 # Issue 1: Weak Cryptography
 password_hash = hashlib.md5(b"password123").hexdigest()

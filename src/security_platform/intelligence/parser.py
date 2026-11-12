@@ -8,12 +8,14 @@ from security_platform.intelligence.models import (
     ImportNode,
     ParameterNode,
 )
+from security_platform.intelligence.resolver import ImportResolver
 from security_platform.models.location import SourceLocation
 
 
 class PythonASTVisitor(ast.NodeVisitor):
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, resolver: ImportResolver | None = None):
         self.file_path = file_path
+        self.resolver = resolver or ImportResolver()
         self.imports: list[ImportNode] = []
         self.functions: list[FunctionNode] = []
         self.classes: list[ClassNode] = []
@@ -31,7 +33,7 @@ class PythonASTVisitor(ast.NodeVisitor):
 
     def _extract_name(self, node: ast.AST) -> str:
         if isinstance(node, ast.Name):
-            return node.id
+            return self.resolver.resolve_name(node.id)
         elif isinstance(node, ast.Attribute):
             return f"{self._extract_name(node.value)}.{node.attr}"
         return "<unknown>"
@@ -43,6 +45,8 @@ class PythonASTVisitor(ast.NodeVisitor):
                 alias=alias.asname,
                 location=self._get_location(node)
             ))
+            local_name = alias.asname or alias.name
+            self.resolver.aliases[local_name] = alias.name
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> Any:
@@ -54,6 +58,9 @@ class PythonASTVisitor(ast.NodeVisitor):
                 alias=alias.asname,
                 location=self._get_location(node)
             ))
+            local_name = alias.asname or alias.name
+            fq_name = f"{module}.{alias.name}" if module else alias.name
+            self.resolver.aliases[local_name] = fq_name
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> Any:
@@ -97,11 +104,41 @@ class PythonASTVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> Any:
-        callee = self._extract_name(node.func)
+        callee = self.resolver.resolve_call_name(node)
+
+        # Extract arg representations
+        arg_strs: list[str] = []
+        for arg in node.args:
+            if isinstance(arg, ast.Constant):
+                arg_strs.append(str(arg.value))
+            elif isinstance(arg, ast.Name):
+                arg_strs.append(arg.id)
+            else:
+                try:
+                    arg_strs.append(ast.unparse(arg))
+                except Exception:
+                    arg_strs.append("<expr>")
+
+        # Extract keyword argument mappings
+        keyword_map: dict[str, str] = {}
+        for kw in node.keywords:
+            if kw.arg:
+                if isinstance(kw.value, ast.Constant):
+                    keyword_map[kw.arg] = str(kw.value.value)
+                elif isinstance(kw.value, ast.Name):
+                    keyword_map[kw.arg] = kw.value.id
+                else:
+                    try:
+                        keyword_map[kw.arg] = ast.unparse(kw.value)
+                    except Exception:
+                        keyword_map[kw.arg] = "<expr>"
+
         call_node = CallNode(
             caller_function=self._current_function,
             callee_name=callee,
-            location=self._get_location(node)
+            location=self._get_location(node),
+            args=arg_strs,
+            keywords=keyword_map
         )
         self.calls.append(call_node)
         if self._current_function:
@@ -114,9 +151,11 @@ class PythonASTVisitor(ast.NodeVisitor):
 class CodeParser:
     @staticmethod
     def parse_python_file(file_path: str, source_code: str) -> PythonASTVisitor:
-        visitor = PythonASTVisitor(file_path)
+        resolver = ImportResolver()
+        visitor = PythonASTVisitor(file_path, resolver=resolver)
         try:
             tree = ast.parse(source_code)
+            resolver.scan_ast(tree)
             visitor.visit(tree)
         except (SyntaxError, RecursionError, MemoryError, ValueError):
             # Gracefully handle parser crashes and resource exhaustion on untrusted code

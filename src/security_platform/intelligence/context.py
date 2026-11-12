@@ -35,4 +35,7 @@ class AnalyzerContext:
         return [f for f in self.functions if f.name == name]
 
     def get_calls_to(self, callee_name: str) -> list[CallNode]:
-        return [c for c in self.calls if c.callee_name == callee_name]
+        return [
+            c for c in self.calls
+            if c.callee_name == callee_name or c.callee_name.endswith(f".{callee_name}")
+        ]

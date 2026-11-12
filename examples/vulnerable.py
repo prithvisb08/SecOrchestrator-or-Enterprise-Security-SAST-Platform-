@@ -1,5 +1,5 @@
 import hashlib
-import os
+
 
 # Weak Cryptography
 def hash_password(password):

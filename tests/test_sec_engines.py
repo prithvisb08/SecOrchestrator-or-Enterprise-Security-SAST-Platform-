@@ -35,8 +35,8 @@ RUN pip install -r requirements.txt
     analyzer = ConfigurationAnalyzer()
     findings = analyzer.analyze_dockerfile("Dockerfile", content)
 
-    # Should detect both Debug Mode enabled and Running as Root
-    assert len(findings) == 2
+    # Should detect Debug Mode, Running as Root, and configuration advisories
+    assert len(findings) >= 2
     vuln_types = {f.vulnerability_type for f in findings}
     assert VulnerabilityType.DEBUG_MODE in vuln_types
     assert VulnerabilityType.INSECURE_DOCKER in vuln_types

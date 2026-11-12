@@ -1,6 +1,8 @@
 import hashlib
+import math
 import re
 import uuid
+from collections import Counter
 
 from security_platform.enums.severity import Severity
 from security_platform.models.finding import Finding
@@ -13,14 +15,14 @@ class SecretScanner:
     # Stable salt for reproducible finding deduplication hashes
     SECRET_SALT = "secorch_secret_salt_v1_"
 
-    PATTERNS = {
+    PATTERNS: dict[str, tuple[str, VulnerabilityType, Severity]] = {
         "AWS Access Key": (
             r"AKIA[0-9A-Z]{16}",
             VulnerabilityType.CLOUD_CREDENTIALS,
             Severity.CRITICAL,
         ),
         "Generic API Key": (
-            r"(?i)(api[_-]?key|secret[_-]?key)['\"]?\s*[:=]\s*['\"]([a-zA-Z0-9_\-]{16,45})['\"]",
+            r"(?i)(?:api[_-]?key|secret[_-]?key)['\"]?\s*[:=]\s*['\"]([a-zA-Z0-9_\-]{16,45})['\"]",
             VulnerabilityType.API_KEY,
             Severity.HIGH,
         ),
@@ -34,15 +36,60 @@ class SecretScanner:
             VulnerabilityType.ACCESS_TOKEN,
             Severity.CRITICAL,
         ),
+        "Slack Token": (
+            r"xox[baprs]-[0-9a-zA-Z]{10,48}",
+            VulnerabilityType.ACCESS_TOKEN,
+            Severity.CRITICAL,
+        ),
+        "Google API Key": (
+            r"AIza[0-9A-Za-z\-_]{35}",
+            VulnerabilityType.API_KEY,
+            Severity.HIGH,
+        ),
+        "Stripe Secret Key": (
+            r"sk_live_[0-9a-zA-Z]{24,}",
+            VulnerabilityType.API_KEY,
+            Severity.CRITICAL,
+        ),
+        "Hardcoded Password": (
+            r"(?i)(?:password|passwd|pwd)\s*[:=]\s*['\"]([^'\"\s]{8,128})['\"]",
+            VulnerabilityType.PASSWORD,
+            Severity.HIGH,
+        ),
+        "Hardcoded Secret / Token": (
+            r"(?i)(?:auth_token|access_token|client_secret|secret)\s*[:=]\s*['\"]([^'\"\s]{12,128})['\"]",
+            VulnerabilityType.HARDCODED_SECRET,
+            Severity.HIGH,
+        ),
+    }
+
+    # Known dummy / placeholder values to ignore
+    DUMMY_VALUES = {
+        "password", "test", "dummy", "example", "changeme", "change_me",
+        "secret", "none", "true", "false", "123456", "12345678", "admin", "root",
+        "secorch_default_dev_secret_change_in_prod_minimum_32_bytes_long"
     }
 
     def __init__(self, scanner_version: str = "1.0.0"):
         self.scanner_version = scanner_version
 
+    @staticmethod
+    def calculate_shannon_entropy(data: str) -> float:
+        """Calculates Shannon entropy in bits per character."""
+        if not data:
+            return 0.0
+        length = len(data)
+        counts = Counter(data)
+        entropy = 0.0
+        for count in counts.values():
+            p = count / length
+            entropy -= p * math.log2(p)
+        return entropy
+
     def _extract_token_value(self, pattern: str, match: re.Match[str]) -> str:
         """Extracts the sensitive secret token rather than the surrounding key syntax."""
-        if match.lastindex and match.lastindex >= 2:
-            return match.group(2)
+        if match.lastindex and match.lastindex >= 1:
+            return match.group(match.lastindex)
         return match.group(0)
 
     def _redact_all_secrets_on_line(self, line: str) -> str:
@@ -51,7 +98,7 @@ class SecretScanner:
         for _, (pattern, _, _) in self.PATTERNS.items():
             for m in re.finditer(pattern, line):
                 token = self._extract_token_value(pattern, m)
-                if token:
+                if token and token in redacted:
                     redacted = redacted.replace(token, "[REDACTED_SECRET]")
         return redacted
 
@@ -67,13 +114,42 @@ class SecretScanner:
         lines = content.splitlines()
 
         for line_idx, line in enumerate(lines, start=1):
+            stripped = line.strip()
+            if stripped.startswith("#") or stripped.startswith("//"):
+                continue  # Skip pure comments
+
             line_findings: list[tuple[str, str, VulnerabilityType, Severity, str]] = []
 
             for name, (pattern, vuln_type, severity) in self.PATTERNS.items():
                 for match in re.finditer(pattern, line):
                     token = self._extract_token_value(pattern, match)
+                    if token.lower() in self.DUMMY_VALUES:
+                        continue
+                    # Ignore if assigned value matches variable name (e.g. ACCESS_TOKEN = "ACCESS_TOKEN")
+                    var_match = re.search(r"([a-zA-Z0-9_]+)\s*[:=]", line)
+                    if var_match and var_match.group(1).lower() == token.lower():
+                        continue
                     token_hash = self._compute_salted_hash(token)
                     line_findings.append((name, pattern, vuln_type, severity, token_hash))
+
+            if not line_findings:
+                # Check for high-entropy assignment strings that might be unlabeled secrets
+                assignment_match = re.search(r"['\"]([a-zA-Z0-9_\-+/=]{20,80})['\"]", line)
+                if assignment_match:
+                    raw_candidate = assignment_match.group(1)
+                    # Ignore snake_case identifiers or metric names
+                    if not ("_" in raw_candidate and raw_candidate.islower()):
+                        if raw_candidate.lower() not in self.DUMMY_VALUES:
+                            entropy = self.calculate_shannon_entropy(raw_candidate)
+                            if entropy >= 3.8:
+                                token_hash = self._compute_salted_hash(raw_candidate)
+                                line_findings.append((
+                                    "High-Entropy Secret Literal",
+                                    "",
+                                    VulnerabilityType.HARDCODED_SECRET,
+                                    Severity.MEDIUM,
+                                    token_hash
+                                ))
 
             if not line_findings:
                 continue

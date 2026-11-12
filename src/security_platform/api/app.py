@@ -27,6 +27,7 @@ _DEFAULT_SCAN_ROOTS = [
     Path(tempfile.gettempdir()).resolve(),
 ]
 if os.environ.get("SEC_ORCH_ALLOWED_SCAN_ROOT"):
+    # secorch: ignore[SEC-TAINT-PATH_TRAVERSAL-001] reason="Admin configured scan root"
     _DEFAULT_SCAN_ROOTS.append(Path(os.environ["SEC_ORCH_ALLOWED_SCAN_ROOT"]).resolve())
 
 
@@ -150,7 +151,9 @@ async def scan_archive_upload(
 ) -> dict[str, str]:
     """Uploads and securely extracts a zip or tar repository archive for scanning."""
     scan_id = str(uuid.uuid4())
-    temp_archive = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{archive.filename}")
+    raw_suffix = Path(archive.filename or "").suffix
+    safe_suffix = raw_suffix if raw_suffix in {".zip", ".tar", ".gz", ".tgz"} else ".tmp"
+    temp_archive = tempfile.NamedTemporaryFile(delete=False, suffix=safe_suffix)
 
     try:
         content = await archive.read()

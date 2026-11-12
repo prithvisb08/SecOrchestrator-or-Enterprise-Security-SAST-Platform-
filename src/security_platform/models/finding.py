@@ -36,6 +36,15 @@ class Finding(BaseModel):
     discovered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     scanner_version: str
     metadata: dict[str, str] = Field(default_factory=dict)
+    fingerprint: str = ""
+
+    def get_fingerprint(self) -> str:
+        """Returns stable fingerprint or computes fallback based on rule and location."""
+        if self.fingerprint:
+            return self.fingerprint
+        if self.metadata and "fingerprint" in self.metadata:
+            return self.metadata["fingerprint"]
+        return f"{self.rule_id}:{self.location.file_path}:{self.location.start_line}"
 
     def transition_status(self, new_status: FindingStatus) -> None:
         """Handles state transitions for the finding."""

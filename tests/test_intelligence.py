@@ -40,7 +40,7 @@ def test_python_ast_extraction(sample_python_code):
 
     # Check Call Graph
     calls = [c.callee_name for c in visitor.calls]
-    assert "Popen" in calls
+    assert any("Popen" in c for c in calls)
     assert "execute_system" in calls
 
 def test_graceful_syntax_error():

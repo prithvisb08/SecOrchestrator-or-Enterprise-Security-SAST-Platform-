@@ -1,3 +1,4 @@
+import os
 from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -12,7 +13,7 @@ from security_platform.core.logging import logger
 
 security_scheme = HTTPBearer(auto_error=False)
 
-JWT_SECRET = "secorch_default_dev_secret_change_in_prod_minimum_32_bytes_long"
+JWT_SECRET = os.getenv("JWT_SECRET", "secorch_default_dev_secret_change_in_prod_minimum_32_bytes_long")
 JWT_ALGORITHM = "HS256"
 JWT_AUDIENCE = "secorch-api"
 JWT_ISSUER = "secorch-auth"

@@ -2,8 +2,9 @@ import ast
 import uuid
 
 from security_platform.dataflow.analyzer import TaintTracker
-from security_platform.dataflow.config import DEFAULT_SINKS
+from security_platform.dataflow.config import match_sink
 from security_platform.enums.severity import Severity
+from security_platform.intelligence.resolver import ImportResolver
 from security_platform.models.finding import Finding
 from security_platform.taxonomy.categories import Category
 from security_platform.taxonomy.vulnerability_types import VulnerabilityType
@@ -14,28 +15,37 @@ class DataFlowEngine:
         self.scanner_version = scanner_version
 
     def analyze_file(self, file_path: str, source_code: str) -> list[Finding]:
-        findings = []
+        findings: list[Finding] = []
         try:
             tree = ast.parse(source_code)
-            tracker = TaintTracker(file_path)
+            resolver = ImportResolver()
+            resolver.scan_ast(tree)
+
+            tracker = TaintTracker(file_path, resolver=resolver)
             tracker.visit(tree)
 
             for path in tracker.discovered_paths:
-                sink_info = DEFAULT_SINKS.get(path.sink.expression)
+                if path.is_sanitized:
+                    continue
+
+                sink_info = match_sink(path.sink.expression)
                 if not sink_info:
                     continue
+
                 v_type = (
                     sink_info.vulnerability_type
                     if isinstance(sink_info.vulnerability_type, VulnerabilityType)
                     else VulnerabilityType(sink_info.vulnerability_type)
                 )
+
+                rule_id = f"SEC-TAINT-{str(v_type).upper()}-001"
                 finding = Finding(
                     finding_id=str(uuid.uuid4()),
-                    rule_id=f"SEC-TAINT-{str(v_type).upper()}-001",
+                    rule_id=rule_id,
                     category=Category.SECURITY,
                     vulnerability_type=v_type,
                     title=f"Untrusted Data Reaches {path.sink.expression}",
-                    description=f"Data originating from {path.source.expression} flows into {path.sink.expression} without sanitization.",
+                    description=f"Data originating from {path.source.expression} flows into {path.sink.expression} without valid sanitization.",
                     severity=Severity.HIGH,
                     confidence=0.90,
                     location=path.sink.location,

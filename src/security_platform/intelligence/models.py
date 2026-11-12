@@ -19,6 +19,8 @@ class CallNode(BaseModel):
     caller_function: str | None
     callee_name: str
     location: SourceLocation
+    args: list[str] = Field(default_factory=list)
+    keywords: dict[str, str] = Field(default_factory=dict)
 
 
 class FunctionNode(BaseModel):

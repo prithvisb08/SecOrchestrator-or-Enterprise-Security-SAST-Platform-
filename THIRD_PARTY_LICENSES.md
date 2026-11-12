@@ -14,6 +14,7 @@ This document tracks all external tools and libraries utilized or integrated int
 | Prometheus Client | Apache-2.0 | [prometheus/client_python](https://github.com/prometheus/client_python) | Permissive |
 | PyJWT | Apache-2.0 | [jpadilla/pyjwt](https://github.com/jpadilla/pyjwt) | Permissive |
 | python-multipart | Apache-2.0 | [Kludex/python-multipart](https://github.com/Kludex/python-multipart) | Permissive |
+| PyYAML | MIT | [yaml/pyyaml](https://github.com/yaml/pyyaml) | Permissive |
 
 ## Development & Testing Dependencies
 

@@ -1,0 +1,239 @@
+version: "1.0.0"
+frameworks:
+  flask:
+    sources:
+      - name: "flask.request.args"
+        type: "attribute"
+        description: "Flask URL query parameters"
+      - name: "flask.request.args.get"
+        type: "call"
+        description: "Flask URL query parameter fetch"
+      - name: "flask.request.form"
+        type: "attribute"
+        description: "Flask HTTP POST form data"
+      - name: "flask.request.form.get"
+        type: "call"
+        description: "Flask HTTP POST form parameter fetch"
+      - name: "flask.request.values"
+        type: "attribute"
+        description: "Flask combined query and form parameters"
+      - name: "flask.request.values.get"
+        type: "call"
+        description: "Flask combined parameter fetch"
+      - name: "flask.request.json"
+        type: "attribute"
+        description: "Flask parsed JSON body"
+      - name: "flask.request.data"
+        type: "attribute"
+        description: "Flask raw incoming request body"
+      - name: "flask.request.get_json"
+        type: "call"
+        description: "Flask JSON body fetch"
+      - name: "flask.request.headers"
+        type: "attribute"
+        description: "Flask HTTP request headers"
+      - name: "flask.request.cookies"
+        type: "attribute"
+        description: "Flask incoming cookies"
+      - name: "request.args"
+        type: "attribute"
+        description: "Flask request args"
+      - name: "request.args.get"
+        type: "call"
+        description: "Flask request args get"
+      - name: "request.form"
+        type: "attribute"
+        description: "Flask request form"
+      - name: "request.form.get"
+        type: "call"
+        description: "Flask request form get"
+      - name: "request.values"
+        type: "attribute"
+        description: "Flask request values"
+      - name: "request.json"
+        type: "attribute"
+        description: "Flask request json"
+      - name: "request.data"
+        type: "attribute"
+        description: "Flask request raw data"
+      - name: "request.get_json"
+        type: "call"
+        description: "Flask request get_json"
+
+  django:
+    sources:
+      - name: "request.GET"
+        type: "attribute"
+        description: "Django GET query dict"
+      - name: "request.GET.get"
+        type: "call"
+        description: "Django GET parameter fetch"
+      - name: "request.POST"
+        type: "attribute"
+        description: "Django POST query dict"
+      - name: "request.POST.get"
+        type: "call"
+        description: "Django POST parameter fetch"
+      - name: "request.body"
+        type: "attribute"
+        description: "Django raw request body"
+      - name: "request.COOKIES"
+        type: "attribute"
+        description: "Django cookies"
+      - name: "request.headers"
+        type: "attribute"
+        description: "Django request headers"
+
+  fastapi:
+    sources:
+      - name: "fastapi.Request.query_params"
+        type: "attribute"
+        description: "FastAPI request query params"
+      - name: "fastapi.Request.json"
+        type: "call"
+        description: "FastAPI request json"
+      - name: "fastapi.Request.body"
+        type: "call"
+        description: "FastAPI request body"
+
+  stdlib:
+    sources:
+      - name: "sys.argv"
+        type: "subscript"
+        description: "Command-line argument"
+      - name: "os.environ.get"
+        type: "call"
+        description: "Environment variable fetch"
+      - name: "os.environ"
+        type: "subscript"
+        description: "Environment variable dictionary"
+      - name: "input"
+        type: "call"
+        description: "Standard input interactive call"
+      - name: "sys.stdin.read"
+        type: "call"
+        description: "Standard input read"
+
+sinks:
+  command_injection:
+    vulnerability_type: "COMMAND_INJECTION"
+    patterns:
+      - "subprocess.run"
+      - "subprocess.call"
+      - "subprocess.check_call"
+      - "subprocess.check_output"
+      - "subprocess.Popen"
+      - "os.system"
+      - "os.popen"
+      - "os.spawnl"
+      - "os.spawnle"
+      - "os.spawnlp"
+      - "os.spawnlpe"
+      - "os.spawnv"
+      - "os.spawnve"
+      - "os.spawnvp"
+      - "os.spawnvpe"
+      - "os.posix_spawn"
+      - "os.posix_spawnp"
+
+  sql_injection:
+    vulnerability_type: "SQL_INJECTION"
+    patterns:
+      - "*.execute"
+      - "*.executemany"
+      - "*.executescript"
+      - "cursor.execute"
+      - "cursor().execute"
+      - "sqlite3.execute"
+      - "session.execute"
+      - "db.execute"
+      - "conn.execute"
+
+  insecure_deserialization:
+    vulnerability_type: "INSECURE_DESERIALIZATION"
+    patterns:
+      - "pickle.loads"
+      - "pickle.load"
+      - "_pickle.loads"
+      - "_pickle.load"
+      - "yaml.load"
+      - "marshal.loads"
+      - "marshal.load"
+      - "shelve.open"
+
+  code_injection:
+    vulnerability_type: "CODE_INJECTION"
+    patterns:
+      - "eval"
+      - "exec"
+
+  ssrf:
+    vulnerability_type: "SSRF"
+    patterns:
+      - "requests.get"
+      - "requests.post"
+      - "requests.put"
+      - "requests.delete"
+      - "requests.request"
+      - "httpx.get"
+      - "httpx.post"
+      - "httpx.request"
+      - "urllib.request.urlopen"
+      - "urllib.request.Request"
+
+  path_traversal:
+    vulnerability_type: "PATH_TRAVERSAL"
+    patterns:
+      - "open"
+      - "os.remove"
+      - "os.unlink"
+      - "os.rmdir"
+      - "shutil.rmtree"
+      - "pathlib.Path"
+
+  ssti:
+    vulnerability_type: "CROSS_SITE_SCRIPTING"
+    patterns:
+      - "jinja2.Template"
+      - "render_template_string"
+      - "mako.template.Template"
+
+sanitizers:
+  - name: "shlex.quote"
+    description: "Shell argument escaping"
+    valid_sinks:
+      - "COMMAND_INJECTION"
+
+  - name: "int"
+    description: "Integer casting"
+    valid_sinks:
+      - "SQL_INJECTION"
+      - "COMMAND_INJECTION"
+      - "PATH_TRAVERSAL"
+
+  - name: "float"
+    description: "Float casting"
+    valid_sinks:
+      - "SQL_INJECTION"
+      - "COMMAND_INJECTION"
+      - "PATH_TRAVERSAL"
+
+  - name: "html.escape"
+    description: "HTML entity escaping"
+    valid_sinks:
+      - "CROSS_SITE_SCRIPTING"
+
+  - name: "markupsafe.escape"
+    description: "MarkupSafe HTML escaping"
+    valid_sinks:
+      - "CROSS_SITE_SCRIPTING"
+
+  - name: "os.path.basename"
+    description: "File path basename extraction"
+    valid_sinks:
+      - "PATH_TRAVERSAL"
+
+  - name: "werkzeug.utils.secure_filename"
+    description: "Secure filename sanitization"
+    valid_sinks:
+      - "PATH_TRAVERSAL"
