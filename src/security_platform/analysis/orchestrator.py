@@ -11,6 +11,7 @@ from security_platform.core.version import get_version
 from security_platform.dataflow.engine import DataFlowEngine
 from security_platform.engines.config_analyzer import ConfigurationAnalyzer
 from security_platform.engines.dependency_analyzer import Dependency, DependencyAnalyzer
+from security_platform.engines.registry import EngineRegistry, create_default_registry
 from security_platform.engines.secret_scanner import SecretScanner
 from security_platform.ingestion.snapshot import RepositorySnapshotBuilder
 from security_platform.intelligence.context import AnalyzerContext
@@ -47,13 +48,18 @@ class ScanResult(BaseModel):
 class ScanOrchestrator:
     """Unified engine coordinator for both CLI and API workflows."""
 
-    def __init__(self, scanner_version: str | None = None) -> None:
+    def __init__(
+        self,
+        scanner_version: str | None = None,
+        engine_registry: EngineRegistry | None = None
+    ) -> None:
         self.version = scanner_version or get_version()
         self.secret_scanner = SecretScanner(scanner_version=self.version)
         self.config_analyzer = ConfigurationAnalyzer()
         self.dataflow_engine = DataFlowEngine(scanner_version=self.version)
         self.dependency_analyzer = DependencyAnalyzer(scanner_version=self.version)
         self.sast_engine = SASTEngine([UnsafeEvalExecRule(), WeakHashingRule()])
+        self.engine_registry = engine_registry or create_default_registry()
         self.correlator = FindingCorrelator()
         self.risk_engine = RiskEngine()
 
@@ -261,10 +267,22 @@ class ScanOrchestrator:
                 )
             )
 
-        # 4. Filter suppressions (inline comments & baseline)
+        # 4. External orchestrated engines (Bandit, Semgrep, Gitleaks, Trivy, OSV, Checkov)
+        external_findings, engine_errors = self.engine_registry.run_parallel(snapshot, path)
+        all_findings.extend(external_findings)
+        for engine_name, eng_error in engine_errors:
+            scan_errors.append(
+                ScanErrorEntry(
+                    file_path=f"<{engine_name}>",
+                    error_type=f"{engine_name}.{type(eng_error).__name__}",
+                    message=str(eng_error)
+                )
+            )
+
+        # 5. Filter suppressions (inline comments & baseline)
         all_findings = self._filter_suppressions(path, all_findings)
 
-        # 5. Correlate findings & compute risk
+        # 6. Correlate findings & compute risk
         correlated = self.correlator.correlate(all_findings)
         risk = self.risk_engine.calculate_risk(snapshot.repository_id, all_findings, asset_criticality)
 
