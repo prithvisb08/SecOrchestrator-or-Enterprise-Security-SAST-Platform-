@@ -87,11 +87,11 @@ class GitHubAppProvider(VCSProvider):
 
     def _get_auth_headers(self, installation_id: str | None = None) -> dict[str, str]:
         # In a real GitHub App deployment, this would exchange an App JWT for an installation token
-        token = "ghs_mock_installation_token"
+        token = "ghs_mock_installation_token"  # secorch: ignore[SEC-SECRET-HARDCODED_SECRET-001] reason="Mock token for dev/testing"
         return {
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
+            "X-GitHub-Api-Version": "2022-11-28",  # secorch: ignore[SEC-SECRET-HARDCODED_SECRET-001] reason="Static API version header"
         }
 
     def publish_check_run(

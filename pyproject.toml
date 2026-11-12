@@ -20,6 +20,7 @@ dependencies = [
     "pyyaml>=6.0.1",
     "sqlalchemy>=2.0.0",
     "libcst>=1.1.0",
+    "pydantic-settings>=2.2.0",
 ]
 
 [project.optional-dependencies]
@@ -32,6 +33,7 @@ dev = [
 ]
 
 [project.scripts]
+secorch = "security_platform.cli:app"
 sec-scan = "security_platform.cli:app"
 security-platform = "security_platform.cli:app"
 

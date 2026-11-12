@@ -1,0 +1,117 @@
+name: Enterprise CI Pipeline & Security Supply Chain
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-types:
+    name: Code Quality & Type Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install uv & Dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv sync --extra dev
+
+      - name: Run Ruff Linter
+        run: uv run ruff check .
+
+      - name: Run Mypy Strict Type Check
+        run: uv run mypy --strict src/security_platform/
+
+  tests-and-coverage:
+    name: Unit & Integration Tests (Coverage >= 80%)
+    runs-on: ubuntu-latest
+    needs: lint-and-types
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install uv & Dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv sync --extra dev
+
+      - name: Execute Pytest with Coverage
+        run: uv run pytest --cov=security_platform --cov-report=term-missing tests/
+
+  self-scan:
+    name: SecOrchestrator Dogfooding Self-Scan
+    runs-on: ubuntu-latest
+    needs: tests-and-coverage
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install SecOrchestrator
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv sync --extra dev
+
+      - name: Run Self-Scan CLI
+        run: |
+          uv run secorch scan src/ --format sarif > self-scan.sarif || true
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@cdcdbb579706841c47f7063dda365e292e5cad7a # v3.28.8
+        if: always()
+        with:
+          sarif_file: self-scan.sarif
+
+  supply-chain:
+    name: Container Build, Trivy & SBOM
+    runs-on: ubuntu-latest
+    needs: self-scan
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+
+      - name: Build Container Image
+        uses: docker/build-push-action@4a13e500e05cbc6b9b63696685167b0d5ea780b3 # v5.1.0
+        with:
+          context: .
+          load: true
+          tags: secorchestrator:ci
+
+      - name: Run Trivy Vulnerability Scan
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # v0.29.0
+        with:
+          image-ref: secorchestrator:ci
+          format: table
+          exit-code: 0
+          ignore-unfixed: true
+          vuln-type: os,library

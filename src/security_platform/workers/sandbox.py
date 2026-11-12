@@ -40,7 +40,7 @@ class SandboxRunner:
             cmd.append("--read-only")
 
         if self.config.drop_all_capabilities:
-            cmd.extend(["--cap-drop=ALL", "--security-opt=no-new-privileges"])
+            cmd.extend(["--cap-drop=ALL", "--security-opt=no-new-privileges"])  # secorch: ignore[SEC-SECRET-HARDCODED_SECRET-001] reason="Container security flags"
 
         if self.config.network_disabled:
             cmd.append("--network=none")

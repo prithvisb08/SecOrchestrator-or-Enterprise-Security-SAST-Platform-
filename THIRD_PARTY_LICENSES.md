@@ -17,6 +17,8 @@ This document tracks all external tools and libraries utilized or integrated int
 | PyYAML | MIT | [yaml/pyyaml](https://github.com/yaml/pyyaml) | Permissive |
 | SQLAlchemy | MIT | [sqlalchemy/sqlalchemy](https://github.com/sqlalchemy/sqlalchemy) | Permissive |
 | LibCST | MIT | [Instagram/LibCST](https://github.com/Instagram/LibCST) | Permissive |
+| pydantic-settings | MIT | [pydantic/pydantic-settings](https://github.com/pydantic/pydantic-settings) | Permissive |
+| python-dotenv | BSD-3-Clause | [theskumar/python-dotenv](https://github.com/theskumar/python-dotenv) | Permissive |
 
 ## Development & Testing Dependencies
 
