@@ -49,3 +49,31 @@ def test_asset_criticality_scaling():
     a2 = engine.calculate_risk("repo-1", findings, asset_criticality=0.5)
     assert a2.overall_risk_score == 2.5
     assert a2.risk_level == Severity.LOW
+
+
+def test_monotonic_risk_property():
+    """
+    A3 & Phase 5: Risk calculation must be strictly monotonic.
+    Adding findings to a repository should never lower its risk score.
+    """
+    engine = RiskEngine()
+    critical_only = [_make_finding(Severity.CRITICAL, confidence=1.0)]
+    critical_plus_50_lows = [_make_finding(Severity.CRITICAL, confidence=1.0)] + [
+        _make_finding(Severity.LOW, confidence=1.0) for _ in range(50)
+    ]
+
+    score_crit = engine.calculate_risk("repo-1", critical_only).overall_risk_score
+    score_with_lows = engine.calculate_risk("repo-1", critical_plus_50_lows).overall_risk_score
+
+    # Monotonicity check: score must not decrease when adding 50 vulnerabilities
+    assert score_with_lows >= score_crit, f"Score decreased: {score_crit} -> {score_with_lows}"
+    assert score_with_lows == 10.0
+
+    # Adding lows to a Medium finding strictly increases risk
+    medium_only = [_make_finding(Severity.MEDIUM, confidence=1.0)]
+    medium_plus_lows = [_make_finding(Severity.MEDIUM, confidence=1.0)] + [
+        _make_finding(Severity.LOW, confidence=1.0) for _ in range(10)
+    ]
+    score_med = engine.calculate_risk("repo-1", medium_only).overall_risk_score
+    score_med_lows = engine.calculate_risk("repo-1", medium_plus_lows).overall_risk_score
+    assert score_med_lows > score_med, "Adding findings failed to increase risk score"

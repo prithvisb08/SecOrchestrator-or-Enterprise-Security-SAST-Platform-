@@ -6,6 +6,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from security_platform.analysis.dedupe import FindingDeduplicator
 from security_platform.core.logging import logger
 from security_platform.core.version import get_version
 from security_platform.dataflow.engine import DataFlowEngine
@@ -37,6 +38,7 @@ class ScanResult(BaseModel):
     scanner_version: str
     findings: list[Finding] = Field(default_factory=list)
     findings_count: int = 0
+    fixed_findings: list[Finding] = Field(default_factory=list)
     dependencies: list[Dependency] = Field(default_factory=list)
     correlated_findings: list[CorrelatedFinding] = Field(default_factory=list)
     risk_assessment: RiskAssessment
@@ -135,7 +137,8 @@ class ScanOrchestrator:
         target_path: Path | str,
         asset_criticality: float = 1.0,
         scan_id: str | None = None,
-        repository_id: str | None = None
+        repository_id: str | None = None,
+        previous_findings: list[Finding] | None = None
     ) -> ScanResult:
         start_time = time.monotonic()
         path = Path(target_path).resolve()
@@ -282,7 +285,13 @@ class ScanOrchestrator:
         # 5. Filter suppressions (inline comments & baseline)
         all_findings = self._filter_suppressions(path, all_findings)
 
-        # 6. Correlate findings & compute risk
+        # 6. Cross-engine deduplication & lifecycle
+        all_findings = FindingDeduplicator.deduplicate(all_findings)
+        fixed_findings: list[Finding] = []
+        if previous_findings is not None:
+            all_findings, fixed_findings = FindingDeduplicator.compute_lifecycle(all_findings, previous_findings)
+
+        # 7. Correlate findings & compute risk
         correlated = self.correlator.correlate(all_findings)
         risk = self.risk_engine.calculate_risk(snapshot.repository_id, all_findings, asset_criticality)
 
@@ -307,6 +316,7 @@ class ScanOrchestrator:
             scanner_version=self.version,
             findings=all_findings,
             findings_count=len(all_findings),
+            fixed_findings=fixed_findings,
             dependencies=all_dependencies,
             correlated_findings=correlated,
             risk_assessment=risk,
